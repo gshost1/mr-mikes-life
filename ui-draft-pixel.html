@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Mr. Mike's Life - Pixel UI Draft</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { width: 1600px; height: 900px; overflow: hidden; background: #000; font-family: 'Press Start 2P', monospace; color: #3b3340; }
+  canvas { image-rendering: pixelated; image-rendering: crisp-edges; }
+  #world { position: absolute; left: 0; top: 0; width: 1600px; height: 900px; }
+  .screen { position: absolute; inset: 0; display: none; }
+  .screen.on { display: block; }
+
+  /* pixel panel: hard 4px border with notched corners */
+  .px { position: absolute; background: #fff3e0;
+    box-shadow: 0 -4px 0 0 #3b3340, 0 4px 0 0 #3b3340, -4px 0 0 0 #3b3340, 4px 0 0 0 #3b3340,
+                inset 0 -4px 0 0 #e8cfb4, 0 8px 0 0 rgba(59,51,64,.35); }
+  .ic { width: 32px; height: 32px; flex: 0 0 32px; }
+
+  .stats { left: 24px; top: 24px; width: 420px; padding: 16px; display: flex; gap: 16px; }
+  .portrait { flex: 0 0 96px; text-align: center; font-size: 8px; }
+  .portrait canvas { width: 96px; height: 96px; display: block; background: #ffb3c6; box-shadow: 0 0 0 4px #3b3340; margin-bottom: 10px; }
+  .bars { flex: 1; display: flex; flex-direction: column; gap: 8px; justify-content: center; }
+  .bar { display: flex; align-items: center; gap: 8px; font-size: 8px; }
+  .bar .nm { width: 64px; }
+  .cells { display: flex; gap: 2px; padding: 2px; background: #3b3340; }
+  .cells i { width: 14px; height: 12px; background: #5a4f60; }
+  .hunger .cells i.f { background: #5bb35b; box-shadow: inset 0 3px 0 #9be07a; }
+  .thirst .cells i.f { background: #3f8fd6; box-shadow: inset 0 3px 0 #a8dcff; }
+  .energy .cells i.f { background: #8a72de; box-shadow: inset 0 3px 0 #d4c8ff; }
+  .chaos  .cells i.f { background: #ff5d84; box-shadow: inset 0 3px 0 #ffb3c6; }
+  .energy .low { color: #ff5d84; }
+
+  .clock { left: 50%; top: 24px; transform: translateX(-50%); width: 352px; padding: 12px 16px 14px; text-align: center; }
+  .clock canvas { width: 320px; height: 96px; display: block; }
+  .clock .time { font-size: 16px; margin-top: 8px; }
+  .clock .phase { font-size: 8px; margin-top: 8px; color: #b07a52; }
+
+  .score { right: 24px; top: 24px; padding: 14px 16px; text-align: right; width: 272px; }
+  .score .t { font-size: 8px; }
+  .score .v { font-size: 24px; color: #ff5d84; margin-top: 10px; text-shadow: 4px 4px 0 #ffd0dc; }
+  .score .combo { display: inline-block; margin-top: 10px; font-size: 8px; background: #ffd23f; padding: 6px 8px; box-shadow: 0 0 0 4px #3b3340; }
+
+  .stickers { right: 24px; top: 168px; width: 272px; padding: 14px; }
+  .stickers h3 { font-size: 10px; margin-bottom: 12px; }
+  .stickers ul { list-style: none; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .stickers li { font-size: 7px; line-height: 10px; display: flex; align-items: center; gap: 6px; padding: 4px; background: #eadbcb; color: #8d7f86; }
+  .stickers li .ic { width: 24px; height: 24px; flex-basis: 24px; opacity: .5; }
+  .stickers li.done { background: #bdf0c8; color: #3b3340; }
+  .stickers li.done .ic { opacity: 1; }
+
+  .bubble { position: absolute; background: #fff; padding: 10px 12px; font-size: 10px; white-space: nowrap;
+    box-shadow: 0 -4px 0 0 #3b3340, 0 4px 0 0 #3b3340, -4px 0 0 0 #3b3340, 4px 0 0 0 #3b3340; }
+  .bubble::after { content: ''; position: absolute; left: 50%; bottom: -16px; margin-left: -6px; width: 12px; height: 12px; background: #fff;
+    box-shadow: 4px 0 0 #3b3340, -4px 0 0 #3b3340, 0 4px 0 #3b3340; clip-path: inset(0 -4px -4px -4px); }
+  .key { display: inline-block; background: #3b3340; color: #fff; padding: 4px 6px; margin-right: 8px; }
+  .pop { position: absolute; font-size: 28px; color: #ff5d84; text-shadow: 4px 0 #fff, -4px 0 #fff, 0 4px #fff, 0 -4px #fff, 4px 4px #3b3340; }
+  .pop.b { color: #3f8fd6; font-size: 16px; }
+
+  .owner { left: 560px; top: 236px; width: 300px; padding: 12px; font-size: 9px; line-height: 16px; background: #fff; }
+  .owner small { display: block; font-size: 7px; color: #8d7f86; margin-top: 6px; }
+
+  .room { left: 24px; bottom: 28px; padding: 12px 16px; font-size: 10px; display: flex; align-items: center; gap: 10px; }
+  .room small { font-size: 7px; color: #b07a52; }
+  .zoom { left: 50%; bottom: 28px; transform: translateX(-50%); width: 400px; padding: 12px 16px; font-size: 8px; text-align: center; }
+  .zoom .cells { margin-top: 10px; justify-content: center; }
+  .zoom .cells i { width: 20px; height: 12px; }
+  .zoom .cells i.f { background: #ffa53d; box-shadow: inset 0 3px 0 #ffe08a; }
+  .controls { right: 24px; bottom: 28px; padding: 12px 14px; font-size: 7px; display: grid; grid-template-columns: auto auto auto auto; gap: 8px 10px; align-items: center; }
+  .controls b { background: #3b3340; color: #fff; padding: 4px 5px; font-weight: normal; text-align: center; }
+
+  .tag { position: absolute; font-size: 7px; background: #ff5d84; color: #fff; padding: 4px 6px; z-index: 9; box-shadow: 0 0 0 2px #3b3340; }
+
+  /* title */
+  .logo { position: absolute; left: 0; right: 0; top: 96px; text-align: center; }
+  .logo h1 { font-size: 64px; font-weight: normal; color: #ff5d84; letter-spacing: 2px;
+    text-shadow: 6px 0 #fff, -6px 0 #fff, 0 6px #fff, 0 -6px #fff, 6px 6px #fff, -6px -6px #fff, 6px -6px #fff, -6px 6px #fff, 0 14px #3b3340, 6px 14px #3b3340, -6px 14px #3b3340; }
+  .logo p { font-size: 12px; margin-top: 36px; color: #6a5a70; }
+  .menu { position: absolute; left: 0; right: 0; top: 330px; display: flex; justify-content: center; gap: 32px; }
+  .btn { position: relative; background: #ff5d84; color: #fff; padding: 16px 22px; font-size: 14px;
+    box-shadow: 0 -4px 0 0 #3b3340, 0 4px 0 0 #3b3340, -4px 0 0 0 #3b3340, 4px 0 0 0 #3b3340, inset 0 -6px 0 #d9466c; }
+  .btn.alt { background: #fff3e0; color: #3b3340; box-shadow: 0 -4px 0 0 #3b3340, 0 4px 0 0 #3b3340, -4px 0 0 0 #3b3340, 4px 0 0 0 #3b3340, inset 0 -6px 0 #e8cfb4; }
+  .btn .arrow { position: absolute; left: -36px; top: 16px; color: #3b3340; }
+  .press { position: absolute; left: 0; right: 0; top: 420px; text-align: center; font-size: 12px; color: #fff; text-shadow: 4px 4px 0 #3b3340; }
+  .zzz { position: absolute; left: 830px; top: 470px; font-size: 32px; color: #8a72de; text-shadow: 4px 4px 0 #fff; }
+  .zzz span { position: absolute; }
+</style>
+</head>
+<body>
+<canvas id="world" width="320" height="180"></canvas>
+
+<!-- ============ GAMEPLAY HUD ============ -->
+<div class="screen" id="hud">
+  <div class="px stats">
+    <div class="portrait"><canvas id="face" width="24" height="24"></canvas>MR. MIKE</div>
+    <div class="bars">
+      <div class="bar hunger"><canvas class="ic" data-i="salad"></canvas><span class="nm">FOOD</span><div class="cells" data-n="7"></div></div>
+      <div class="bar thirst"><canvas class="ic" data-i="drop"></canvas><span class="nm">WATER</span><div class="cells" data-n="4"></div></div>
+      <div class="bar energy"><canvas class="ic" data-i="zz"></canvas><span class="nm low">NAP!</span><div class="cells" data-n="3"></div></div>
+      <div class="bar chaos"><canvas class="ic" data-i="burst"></canvas><span class="nm">CHAOS</span><div class="cells" data-n="9"></div></div>
+    </div>
+  </div>
+
+  <div class="px clock">
+    <canvas id="arc" width="80" height="24"></canvas>
+    <div class="time">10:30 AM</div>
+    <div class="phase">SUNBATHING HOURS</div>
+  </div>
+
+  <div class="px score">
+    <div class="t">CHAOS POINTS</div>
+    <div class="v">001250</div>
+    <div class="combo">X3 COMBO!</div>
+  </div>
+
+  <div class="px stickers">
+    <h3>MR. MIKE'S DAY</h3>
+    <ul>
+      <li class="done"><canvas class="ic" data-i="salad"></canvas>SALAD</li>
+      <li class="done"><canvas class="ic" data-i="tub"></canvas>BATH WATER</li>
+      <li><canvas class="ic" data-i="sun"></canvas>SUNBATHE</li>
+      <li><canvas class="ic" data-i="chair"></canvas>STEAL CHAIR</li>
+      <li class="done"><canvas class="ic" data-i="paw"></canvas>BISCUITS</li>
+      <li><canvas class="ic" data-i="mug"></canvas>KNOCK 2/5</li>
+      <li><canvas class="ic" data-i="bolt"></canvas>ZOOMIES</li>
+      <li><canvas class="ic" data-i="brick"></canvas>WALL JUMP</li>
+    </ul>
+  </div>
+
+  <div class="bubble" style="left:1000px;top:340px"><span class="key">E</span>KNOCK IT OFF!</div>
+  <div class="bubble" style="left:1300px;top:552px;font-size:8px"><span class="key">E</span>MAKE BISCUITS</div>
+  <div class="pop" style="left:1190px;top:330px">+50!</div>
+  <div class="pop b" style="left:560px;top:520px">WALL JUMP +100</div>
+
+  <div class="px owner">"MR. MIKE! THAT WAS MY COFFEE!"<small>- YOU, FROM THE OFFICE</small></div>
+
+  <div class="px room"><canvas class="ic" data-i="sun"></canvas><div>LIVING ROOM<br><br><small>SUNNY SPOT NEARBY</small></div></div>
+  <div class="px zoom"><canvas class="ic" data-i="bolt" style="width:16px;height:16px;vertical-align:middle;margin-right:8px"></canvas>ZOOMIES (HOLD SHIFT)<div class="cells" data-n="9" data-of="15"></div></div>
+  <div class="px controls">
+    <b>WASD</b><span>MOVE</span><b>MOUSE</b><span>LOOK</span>
+    <b>SPACE</b><span>JUMP</span><b>SHIFT</b><span>ZOOM</span>
+    <b>E</b><span>USE</span><b>ESC</b><span>PAUSE</span>
+  </div>
+
+  <div class="tag" style="left:28px;top:8px">A STATUS</div>
+  <div class="tag" style="left:640px;top:8px">B SUN/MOON CLOCK</div>
+  <div class="tag" style="right:28px;top:8px">C SCORE</div>
+  <div class="tag" style="right:28px;top:152px">D STICKER BOOK</div>
+  <div class="tag" style="left:1000px;top:312px">E USE BUBBLE</div>
+  <div class="tag" style="left:560px;top:212px">F YOUR SPEECH</div>
+  <div class="tag" style="left:28px;bottom:120px">G ROOM</div>
+  <div class="tag" style="left:600px;bottom:118px">H ZOOMIES</div>
+  <div class="tag" style="right:28px;bottom:138px">I CONTROLS</div>
+</div>
+
+<!-- ============ TITLE ============ -->
+<div class="screen" id="title">
+  <div class="logo"><h1>MR. MIKE'S LIFE</h1><p>A COZY DAY OF SALAD, SUNBEAMS &amp; CHAOS</p></div>
+  <div class="menu"><div class="btn"><span class="arrow">&#9654;</span>WAKE UP MR. MIKE</div><div class="btn alt">HOW TO PLAY</div></div>
+  <div class="zzz"><span style="left:0;top:40px">Z</span><span style="left:44px;top:0;font-size:24px">Z</span><span style="left:80px;top:-32px;font-size:16px">Z</span></div>
+  <div class="press">- PRESS ANY KEY -</div>
+</div>
+
+<script>
+const PAL = { k:'#3b3340', w:'#ffffff', g:'#5bb35b', G:'#9be07a', b:'#3f8fd6', B:'#a8dcff', y:'#ffd23f', o:'#f5a046',
+  p:'#ff5d84', P:'#ffb3c6', l:'#8a72de', L:'#d4c8ff', n:'#a0714f', N:'#c99366', r:'#e05858', s:'#8f8a8a', S:'#c9c3bd' };
+const ICONS = {
+  salad: ["..g.G...", ".GgGgG..", "gGgGgGg.", "kkkkkkkk", "kwwwwwwk", ".kwwwwk.", "..kkkk..", "........"],
+  drop:  ["...k....", "..kbk...", "..kbk...", ".kbBbk..", "kbbBwbk.", "kbbbbbk.", ".kbbbk..", "..kkk..."],
+  zz:    ["kkkkk...", "...k....", "..k.....", ".k......", "kkkkk...", "....lll.", ".....l..", "....lll."],
+  burst: ["p..p..p.", ".p.y.p..", "..yyy...", "pyywyyp.", "..yyy...", ".p.y.p..", "p..p..p.", "........"],
+  sun:   ["...y....", ".y.y.y..", "..ooo...", "yyoyoyy.", "..ooo...", ".y.y.y..", "...y....", "........"],
+  moon:  ["..LLL...", ".LLk....", "LLk.....", "LLk.....", "LLk.....", ".LLk....", "..LLL...", "........"],
+  chair: [".kkkk...", ".kNNk...", ".kNNk...", ".kNNk...", "kkkkkk..", "k....k..", "k....k..", "........"],
+  paw:   [".p...p..", "ppp.ppp.", ".p...p..", "...p....", "..ppp...", ".ppppp..", ".ppppp..", "..p.p..."],
+  mug:   ["........", "kkkkk...", "kBBBkkk.", "kbbbk.k.", "kbbbkkk.", "kbbbk...", ".kkk....", "........"],
+  bolt:  ["....kk..", "...kyk..", "..kyk...", ".kyyyk..", "..kyk...", ".kyk....", ".kk.....", "........"],
+  brick: ["rrr.rrrr", "rrr.rrrr", "........", "r.rrrr.r", "r.rrrr.r", "........", "rrr.rrrr", "rrr.rrrr"],
+  tub:   ["s.......", "s.......", "kkkkkkkk", "kBBBBBBk", "kwwwwwwk", ".kwwwwk.", ".k....k.", "........"],
+};
+function drawIcon(cv, name) {
+  const m = ICONS[name]; cv.width = 8; cv.height = 8; const c = cv.getContext('2d');
+  m.forEach((row, y) => [...row].forEach((ch, x) => { if (PAL[ch]) { c.fillStyle = PAL[ch]; c.fillRect(x, y, 1, 1); } }));
+}
+document.querySelectorAll('canvas.ic').forEach(cv => drawIcon(cv, cv.dataset.i));
+document.querySelectorAll('.cells').forEach(el => {
+  const n = +el.dataset.n, of = +(el.dataset.of || 10);
+  for (let i = 0; i < of; i++) { const c = document.createElement('i'); if (i < n) c.className = 'f'; el.appendChild(c); }
+});
+
+const cv = document.getElementById('world'), ctx = cv.getContext('2d');
+const R = (x, y, w, h, col, c = ctx) => { c.fillStyle = col; c.fillRect(Math.round(x), Math.round(y), Math.round(w), Math.round(h)); };
+function ell(cx, cy, rx, ry, col, c = ctx) {
+  for (let y = -ry; y <= ry; y++) { const w = Math.round(rx * Math.sqrt(Math.max(0, 1 - (y * y) / (ry * ry)))); R(cx - w, cy + y, w * 2 + 1, 1, col, c); }
+}
+function dither(x0, y0, x1, y1, col, test) {
+  ctx.fillStyle = col;
+  for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) if ((x + y) % 2 === 0 && test(x, y)) ctx.fillRect(x, y, 1, 1);
+}
+// dir = 1 for the left ear (tip leans left), -1 for the right ear
+function ear(x, y, dir, outer, inner, c = ctx) {
+  const rows = 8;
+  for (let i = 0; i < rows; i++) {
+    const w = 1 + i, lean = -dir * Math.floor((rows - i) / 3), x0 = x + lean - Math.floor(w / 2);
+    R(x0 - 1, y + i - 1, w + 2, 2, PAL.k, c);
+  }
+  for (let i = 1; i < rows; i++) {
+    const w = 1 + i, lean = -dir * Math.floor((rows - i) / 3), x0 = x + lean - Math.floor(w / 2);
+    R(x0, y + i, w, 1, outer, c);
+    if (i > 2) R(x0 + 2, y + i, w - 4, 1, inner, c);
+  }
+}
+
+function drawHud() {
+  // wall
+  R(0, 0, 320, 100, '#f4dcc8');
+  for (let x = 0; x < 320; x += 24) R(x, 0, 12, 100, '#f8e7d8');
+  R(0, 94, 320, 6, '#fff4e8'); R(0, 100, 320, 1, '#b8916f');
+  // floor + planks
+  R(0, 101, 320, 79, '#d9a877');
+  [108, 117, 128, 142, 160].forEach((y, i) => { R(0, y, 320, 1, '#c18b5d'); for (let x = (i * 37) % 60; x < 320; x += 60 + i * 8) R(x, y + 1, 1, [7, 9, 12, 16, 20][i], '#c18b5d'); });
+  // window
+  R(26, 16, 68, 60, PAL.k); R(28, 18, 64, 56, '#fff'); R(32, 22, 56, 48, '#9fd4ff');
+  R(32, 50, 56, 20, '#c3e5ff'); R(38, 28, 10, 3, '#fff'); R(36, 31, 16, 3, '#fff'); R(66, 36, 12, 3, '#fff');
+  R(59, 22, 2, 48, '#fff'); R(32, 45, 56, 2, '#fff'); R(22, 74, 76, 4, '#fff'); R(22, 78, 76, 1, PAL.k);
+  // shelf with frame
+  R(120, 40, 50, 3, '#a0714f'); R(126, 28, 12, 12, PAL.k); R(127, 29, 10, 10, '#ffb3c6'); R(150, 32, 6, 8, '#5bb35b'); R(149, 36, 8, 4, '#e07b54');
+  // sunbeam (dithered)
+  dither(20, 78, 200, 180, 'rgba(255,240,150,.55)', (x, y) => { const t = (y - 78); return x > 28 + t * 0.35 && x < 96 + t * 1.05; });
+  ell(110, 160, 40, 9, 'rgba(255,236,140,.35)');
+  // rug
+  ell(160, 156, 60, 15, '#b8708c'); ell(160, 156, 57, 13, '#e9b3c6');
+  for (let x = 110; x < 212; x += 8) R(x, 156, 2, 2, '#d68fa8');
+  // table
+  ell(228, 134, 34, 3, 'rgba(0,0,0,.18)');
+  R(195, 87, 66, 7, PAL.k); R(196, 88, 64, 5, '#a0714f'); R(196, 88, 64, 2, '#c99366');
+  R(199, 93, 6, 40, PAL.k); R(200, 93, 4, 39, '#8a5a3b'); R(251, 93, 6, 40, PAL.k); R(252, 93, 4, 39, '#8a5a3b');
+  // mug
+  R(205, 76, 10, 12, PAL.k); R(206, 77, 8, 10, '#3f8fd6'); R(206, 77, 8, 2, '#a8dcff'); R(215, 79, 3, 6, PAL.k); R(215, 80, 2, 4, '#3f8fd6'); R(214, 80, 1, 4, PAL.k);
+  R(208, 72, 1, 3, '#fff'); R(211, 70, 1, 4, '#fff');
+  // pen
+  R(222, 85, 9, 3, PAL.k); R(223, 86, 7, 1, '#ffd23f'); R(230, 86, 1, 1, '#3b3340');
+  // plant
+  R(238, 78, 14, 10, PAL.k); R(239, 79, 12, 8, '#e07b54'); R(239, 79, 12, 2, '#f5a046');
+  [[240, 70], [244, 66], [248, 70], [242, 73], [247, 74]].forEach(([x, y]) => { R(x - 1, y - 1, 5, 6, PAL.k); R(x, y, 3, 4, '#5bb35b'); R(x, y, 2, 1, '#9be07a'); });
+  // blanket on floor
+  R(263, 126, 50, 16, PAL.k); R(264, 127, 48, 14, '#f4f1ea'); R(264, 127, 48, 2, '#fff'); R(264, 138, 48, 3, '#ffb3c6');
+  for (let x = 268; x < 310; x += 6) R(x, 131, 2, 2, '#e3ddd2');
+
+  // Mr. Mike from behind
+  ell(160, 160, 22, 4, 'rgba(0,0,0,.22)');
+  // tail
+  const tail = [[176, 156], [180, 154], [183, 151], [185, 147], [186, 143], [185, 139], [183, 136]];
+  tail.forEach(([x, y]) => R(x - 2, y - 2, 5, 5, PAL.k));
+  tail.forEach(([x, y], i) => R(x - 1, y - 1, 3, 3, i % 2 ? '#6b6667' : '#b5afa9'));
+  ell(160, 147, 18, 14, PAL.k); ell(160, 147, 17, 13, '#d8d1c8'); ell(160, 152, 15, 7, '#c7bfb5');
+  for (let i = -1; i <= 1; i++) R(160 + i * 7 - 2, 138, 3, 5, '#bdb5ab');
+  ear(151, 107, 1, '#7f7a7a', '#d9a0a8'); ear(169, 107, -1, '#7f7a7a', '#d9a0a8');
+  ell(160, 124, 14, 11, PAL.k); ell(160, 124, 13, 10, '#a39e9b'); ell(160, 127, 11, 6, '#b3aeaa');
+  for (let i = -2; i <= 2; i++) R(160 + i * 4, 114, 2, 7 - Math.abs(i) * 2, '#625d5f');
+  R(146, 124, 1, 6, '#f4f1ea'); R(174, 124, 1, 6, '#f4f1ea');
+}
+
+function drawTitle() {
+  for (let y = 0; y < 180; y++) { const t = y / 180; R(0, y, 320, 1, `rgb(${255 - t * 30},${205 - t * 10 + (t > .7 ? 10 : 0)},${222 + t * 20})`); }
+  dither(0, 0, 320, 180, 'rgba(255,255,255,.25)', (x, y) => y > 120 && (x * 7 + y * 3) % 5 === 0);
+  [[30, 30], [290, 40], [20, 140], [300, 150], [60, 90], [270, 100]].forEach(([x, y]) => { R(x, y - 2, 1, 5, '#fff'); R(x - 2, y, 5, 1, '#fff'); });
+  // blankets
+  ell(178, 150, 92, 30, PAL.k); ell(178, 150, 91, 29, '#f4f1ea'); ell(170, 140, 70, 16, '#fbfaf6');
+  for (let x = 100; x < 260; x += 9) for (let y = 135; y < 175; y += 8) R(x + (y % 2) * 4, y, 2, 2, '#e3ddd2');
+  // sleeping Mr. Mike
+  ear(133, 104, 1, '#7f7a7a', '#d9a0a8'); ear(155, 104, -1, '#7f7a7a', '#d9a0a8');
+  ell(144, 124, 20, 15, PAL.k); ell(144, 124, 19, 14, '#a39e9b'); ell(144, 130, 15, 8, '#d8d1c8');
+  for (let i = -2; i <= 2; i++) R(144 + i * 4, 111, 2, 7 - Math.abs(i) * 2, '#625d5f');
+  R(132, 125, 6, 1, PAL.k); R(131, 124, 1, 1, PAL.k); R(138, 124, 1, 1, PAL.k);
+  R(150, 125, 6, 1, PAL.k); R(149, 124, 1, 1, PAL.k); R(156, 124, 1, 1, PAL.k);
+  R(142, 129, 4, 2, '#e8939c'); R(143, 131, 2, 1, PAL.k);
+  R(124, 130, 6, 1, '#fff'); R(124, 132, 6, 1, '#fff'); R(158, 130, 6, 1, '#fff'); R(158, 132, 6, 1, '#fff');
+  // pink blanket tucked over
+  ell(118, 160, 40, 18, PAL.k); ell(118, 160, 39, 17, '#ffb3c6'); ell(112, 154, 26, 8, '#ffd0dc');
+  ell(178, 141, 34, 4, '#e3ddd2'); ell(178, 141, 33, 3, '#fbfaf6');
+}
+
+function drawFace() {
+  const c = document.getElementById('face').getContext('2d');
+  ear(6, 1, 1, '#7f7a7a', '#d9a0a8', c); ear(18, 1, -1, '#7f7a7a', '#d9a0a8', c);
+  ell(12, 14, 10, 8, PAL.k, c); ell(12, 14, 9, 7, '#a39e9b', c); ell(12, 17, 6, 4, '#d8d1c8', c);
+  for (let i = -1; i <= 1; i++) R(12 + i * 3, 7, 1, 3, '#625d5f', c);
+  R(7, 12, 3, 3, PAL.k, c); R(8, 13, 1, 1, '#9bc0d9', c); R(15, 12, 3, 3, PAL.k, c); R(16, 13, 1, 1, '#9bc0d9', c);
+  R(7, 12, 3, 1, '#7f7a7a', c); R(15, 12, 3, 1, '#7f7a7a', c);
+  R(11, 16, 3, 1, '#e8939c', c); R(12, 17, 1, 1, PAL.k, c);
+}
+
+function drawArc() {
+  const c = document.getElementById('arc').getContext('2d');
+  for (let i = 0; i <= 40; i++) {
+    const a = Math.PI - (i / 40) * Math.PI, x = 40 + Math.cos(a) * 34, y = 22 - Math.sin(a) * 18;
+    R(x, y, 2, 2, i <= 13 ? '#ffd23f' : '#e3ccb4', c);
+  }
+  const a = Math.PI - (13 / 40) * Math.PI, sx = Math.round(40 + Math.cos(a) * 34), sy = Math.round(22 - Math.sin(a) * 18);
+  ell(sx, sy, 4, 4, PAL.k, c); ell(sx, sy, 3, 3, '#ffd23f', c); R(sx - 1, sy - 2, 2, 1, '#fff6b0', c);
+  const mi = ICONS.moon; mi.forEach((row, y) => [...row].forEach((ch, x) => { if (PAL[ch]) R(72 + x - 2, 14 + y, 1, 1, PAL[ch], c); }));
+}
+
+const screenId = location.hash === '#title' ? 'title' : 'hud';
+document.getElementById(screenId).classList.add('on');
+if (screenId === 'title') drawTitle(); else { drawHud(); drawFace(); drawArc(); }
+</script>
+</body>
+</html>

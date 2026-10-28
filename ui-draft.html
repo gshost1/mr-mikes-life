@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Mr. Mike's Life - UI Draft</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&display=swap');
+  :root {
+    --cream: #fff8f0; --pink: #ffc8d6; --pink-d: #f49ab4; --mint: #bfeedd; --mint-d: #6fcfac;
+    --sky: #c6e4ff; --sky-d: #6fb2ec; --lav: #dcd0ff; --lav-d: #9d87e8; --peach: #ffd9b8; --peach-d: #f5a46a;
+    --ink: #5a4a5e; --shadow: 0 6px 0 rgba(90,74,94,.15), 0 10px 24px rgba(90,74,94,.12);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { width: 1600px; height: 900px; overflow: hidden; font-family: 'Baloo 2', 'Avenir Next Rounded', system-ui, sans-serif; color: var(--ink); }
+  .screen { position: absolute; inset: 0; display: none; }
+  .screen.on { display: block; }
+
+  /* ---------- fake 3D scene (living room, third person) ---------- */
+  .scene { position: absolute; inset: 0; background: linear-gradient(#f6e7d8 0 58%, #d9b896 58% 100%); overflow: hidden; }
+  .wall-stripe { position: absolute; left: 0; right: 0; top: 0; height: 58%;
+    background: repeating-linear-gradient(90deg, rgba(255,255,255,.25) 0 60px, transparent 60px 120px); }
+  .baseboard { position: absolute; left: 0; right: 0; top: 57%; height: 14px; background: #fff3e6; }
+  .floor-lines { position: absolute; left: -20%; right: -20%; top: 58%; bottom: 0;
+    background: repeating-linear-gradient(90deg, rgba(0,0,0,.05) 0 2px, transparent 2px 140px);
+    transform: perspective(500px) rotateX(55deg); transform-origin: top; }
+  .window { position: absolute; left: 180px; top: 90px; width: 300px; height: 260px; border-radius: 14px;
+    background: linear-gradient(#bfe3ff, #e9f6ff); border: 14px solid #fff; box-shadow: inset 0 0 0 6px #fff; }
+  .window::before, .window::after { content: ''; position: absolute; background: #fff; }
+  .window::before { left: 50%; top: 0; bottom: 0; width: 10px; transform: translateX(-50%); }
+  .window::after { top: 50%; left: 0; right: 0; height: 10px; transform: translateY(-50%); }
+  .sunbeam { position: absolute; left: 150px; top: 330px; width: 520px; height: 520px;
+    background: linear-gradient(170deg, rgba(255,240,170,.55), rgba(255,240,170,0) 80%);
+    clip-path: polygon(10% 0, 70% 0, 100% 100%, 20% 100%); }
+  .sunpatch { position: absolute; left: 300px; top: 660px; width: 340px; height: 120px; border-radius: 50%;
+    background: radial-gradient(rgba(255,236,150,.8), rgba(255,236,150,0) 70%); }
+  .table { position: absolute; left: 1010px; top: 470px; width: 260px; height: 26px; border-radius: 10px; background: #b98a62; }
+  .table::before, .table::after { content: ''; position: absolute; top: 26px; width: 16px; height: 120px; background: #a07450; border-radius: 6px; }
+  .table::before { left: 24px; } .table::after { right: 24px; }
+  .mug { position: absolute; left: 1060px; top: 428px; width: 38px; height: 44px; border-radius: 6px 6px 12px 12px; background: #8fc9ff; }
+  .mug::after { content: ''; position: absolute; right: -14px; top: 9px; width: 14px; height: 20px; border: 5px solid #8fc9ff; border-left: 0; border-radius: 0 10px 10px 0; }
+  .plant { position: absolute; left: 1180px; top: 418px; width: 46px; height: 54px; }
+  .plant .pot { position: absolute; bottom: 0; width: 46px; height: 30px; background: #e98d6b; border-radius: 4px 4px 12px 12px; }
+  .plant .leaf { position: absolute; width: 22px; height: 34px; background: #6fbf73; border-radius: 50% 50% 50% 50% / 70% 70% 30% 30%; bottom: 22px; }
+  .pen { position: absolute; left: 1130px; top: 462px; width: 34px; height: 6px; background: #f2c14e; border-radius: 4px; transform: rotate(-8deg); }
+  .rug { position: absolute; left: 560px; top: 700px; width: 520px; height: 150px; border-radius: 50%; background: #e7c7d6; opacity: .8; }
+  .blanket { position: absolute; left: 1330px; top: 600px; width: 200px; height: 90px; border-radius: 40px 40px 20px 20px; background: #f4f1ea; box-shadow: inset 0 -12px 0 #ffd0dc; }
+
+  /* Mr. Mike, seen from behind (third-person camera) */
+  .mike { position: absolute; left: 720px; top: 560px; width: 170px; height: 190px; }
+  .mike .body { position: absolute; left: 25px; top: 60px; width: 120px; height: 120px; border-radius: 50% 50% 45% 45%;
+    background: radial-gradient(circle at 50% 30%, #e7e2dc, #c9c2bb); }
+  .mike .head { position: absolute; left: 35px; top: 10px; width: 100px; height: 88px; border-radius: 50%;
+    background: radial-gradient(circle at 50% 40%, #b9b6b4, #8f8c8c); }
+  .mike .head::before { content: ''; position: absolute; left: 30px; top: 8px; width: 40px; height: 30px;
+    background: repeating-linear-gradient(90deg, #6f6c6d 0 5px, transparent 5px 12px); border-radius: 50%; opacity: .6; }
+  .mike .ear { position: absolute; top: -8px; width: 0; height: 0; border-left: 18px solid transparent; border-right: 18px solid transparent; border-bottom: 34px solid #858282; }
+  .mike .ear.l { left: 34px; transform: rotate(-14deg); } .mike .ear.r { left: 100px; transform: rotate(14deg); }
+  .mike .tail { position: absolute; left: 120px; top: 120px; width: 70px; height: 20px; border-radius: 20px;
+    background: repeating-linear-gradient(90deg, #8f8c8c 0 12px, #b5b0ab 12px 22px); transform: rotate(-40deg); transform-origin: left; }
+  .mike-shadow { position: absolute; left: 730px; top: 735px; width: 160px; height: 30px; border-radius: 50%; background: rgba(0,0,0,.12); }
+
+  /* ---------- HUD ---------- */
+  .card { background: var(--cream); border-radius: 26px; box-shadow: var(--shadow); border: 3px solid #fff; }
+  .label-tag { position: absolute; font-size: 13px; font-weight: 800; letter-spacing: .5px; color: #fff; background: #ff6f91;
+    padding: 2px 10px; border-radius: 10px; white-space: nowrap; box-shadow: 0 3px 0 rgba(0,0,0,.12); z-index: 5; }
+
+  .stats { position: absolute; left: 28px; top: 26px; width: 380px; padding: 18px 20px 16px; display: flex; gap: 16px; }
+  .portrait { flex: 0 0 86px; height: 86px; border-radius: 50%; background: radial-gradient(circle at 50% 45%, #cfcac6, #9c9897);
+    border: 4px solid #fff; box-shadow: 0 0 0 4px var(--pink); position: relative; }
+  .portrait .eye { position: absolute; top: 34px; width: 16px; height: 18px; border-radius: 50%; background: #9bb6c9; box-shadow: inset 0 0 0 4px #5c7a8f; }
+  .portrait .eye.l { left: 20px; } .portrait .eye.r { right: 20px; }
+  .portrait .nose { position: absolute; left: 50%; top: 52px; width: 10px; height: 8px; transform: translateX(-50%); background: #f2a2a8; border-radius: 50% 50% 60% 60%; }
+  .portrait .mood { position: absolute; right: -8px; bottom: -6px; font-size: 26px; background: #fff; border-radius: 50%; width: 38px; height: 38px; display: grid; place-items: center; box-shadow: 0 3px 0 rgba(0,0,0,.1); }
+  .portrait .name { position: absolute; left: 50%; bottom: -28px; transform: translateX(-50%); font-weight: 800; font-size: 15px; white-space: nowrap; }
+  .bars { flex: 1; display: flex; flex-direction: column; gap: 9px; }
+  .bar { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 14px; }
+  .bar .ic { width: 26px; text-align: center; font-size: 18px; }
+  .bar .track { flex: 1; height: 16px; border-radius: 10px; background: #efe5df; overflow: hidden; }
+  .bar .fill { height: 100%; border-radius: 10px; }
+  .bar .nm { width: 70px; }
+  .hunger .fill { width: 72%; background: linear-gradient(90deg, var(--mint-d), var(--mint)); }
+  .thirst .fill { width: 45%; background: linear-gradient(90deg, var(--sky-d), var(--sky)); }
+  .energy .fill { width: 30%; background: linear-gradient(90deg, var(--lav-d), var(--lav)); }
+  .chaos .fill  { width: 85%; background: linear-gradient(90deg, var(--pink-d), var(--peach)); }
+  .energy .track { animation: none; box-shadow: 0 0 0 3px rgba(157,135,232,.35); }
+
+  .clock { position: absolute; left: 50%; top: 22px; transform: translateX(-50%); width: 340px; height: 140px; padding-top: 10px; text-align: center; }
+  .clock svg { display: block; margin: 0 auto; }
+  .clock .time { font-size: 24px; font-weight: 800; margin-top: -26px; }
+  .clock .phase { font-size: 14px; font-weight: 700; opacity: .7; margin-top: -6px; }
+
+  .score { position: absolute; right: 28px; top: 26px; padding: 14px 24px; text-align: right; }
+  .score .t { font-size: 14px; font-weight: 700; opacity: .7; }
+  .score .v { font-size: 38px; font-weight: 800; color: #ff6f91; line-height: 1; }
+  .score .combo { display: inline-block; margin-top: 6px; font-size: 14px; font-weight: 800; background: var(--peach); padding: 2px 12px; border-radius: 12px; }
+
+  .stickers { position: absolute; right: 28px; top: 170px; width: 260px; padding: 16px 18px; }
+  .stickers h3 { font-size: 17px; font-weight: 800; margin-bottom: 8px; }
+  .stickers ul { list-style: none; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .stickers li { font-size: 13px; font-weight: 700; background: #f3ece7; border-radius: 14px; padding: 6px 8px; display: flex; align-items: center; gap: 6px; opacity: .55; }
+  .stickers li.done { background: var(--mint); opacity: 1; }
+  .stickers li span { font-size: 18px; }
+
+  .bubble { position: absolute; background: #fff; border-radius: 18px; padding: 8px 14px; font-weight: 800; font-size: 16px; box-shadow: var(--shadow); white-space: nowrap; }
+  .bubble::after { content: ''; position: absolute; left: 50%; bottom: -12px; transform: translateX(-50%); border: 8px solid transparent; border-top: 8px solid #fff; border-bottom: 0; border-width: 12px 10px 0; }
+  .bubble .key { display: inline-block; background: var(--ink); color: #fff; border-radius: 8px; padding: 0 8px; margin-right: 6px; }
+  .interact { left: 1015px; top: 360px; }
+  .interact2 { left: 1350px; top: 545px; font-size: 14px; opacity: .8; }
+  .pop { position: absolute; left: 1180px; top: 340px; font-size: 40px; font-weight: 800; color: #ff6f91; -webkit-text-stroke: 3px #fff; paint-order: stroke fill; transform: rotate(-8deg); text-shadow: 0 4px 0 rgba(0,0,0,.1); }
+  .pop.small { left: 900px; top: 500px; font-size: 26px; color: var(--sky-d); transform: rotate(6deg); }
+
+  .room { position: absolute; left: 28px; bottom: 28px; padding: 10px 22px; font-size: 20px; font-weight: 800; display: flex; align-items: center; gap: 8px; }
+  .room small { font-size: 13px; font-weight: 700; opacity: .65; }
+
+  .zoom { position: absolute; left: 50%; bottom: 28px; transform: translateX(-50%); width: 380px; padding: 12px 20px; text-align: center; }
+  .zoom .t { font-size: 15px; font-weight: 800; margin-bottom: 6px; }
+  .zoom .track { height: 14px; border-radius: 10px; background: #efe5df; overflow: hidden; }
+  .zoom .fill { width: 60%; height: 100%; background: repeating-linear-gradient(45deg, #ffb36b 0 12px, #ff8fb1 12px 24px); border-radius: 10px; }
+
+  .controls { position: absolute; right: 28px; bottom: 28px; padding: 12px 18px; font-size: 13px; font-weight: 700; display: grid; grid-template-columns: auto auto; gap: 4px 12px; }
+  .controls b { background: var(--ink); color: #fff; border-radius: 7px; padding: 0 7px; text-align: center; }
+
+  .owner-area { position: absolute; left: 1380px; top: 300px; }
+  .owner-bubble { position: absolute; left: 600px; top: 250px; background: #fff; border-radius: 20px; padding: 10px 16px; font-weight: 800; font-size: 17px; box-shadow: var(--shadow); max-width: 230px; }
+  .owner-bubble small { display: block; font-size: 12px; opacity: .6; }
+
+  /* ---------- Title screen ---------- */
+  .title-bg { position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 70%, #fff3f6, #ffd9e3 55%, #e9d8ff); }
+  .blankets { position: absolute; left: 50%; top: 470px; transform: translateX(-50%); width: 760px; height: 300px; }
+  .blankets .white { position: absolute; left: 140px; top: 60px; width: 620px; height: 240px; border-radius: 120px 140px 60px 60px;
+    background: radial-gradient(circle at 30% 30%, #fff, #efebe4); box-shadow: inset 0 -20px 0 rgba(0,0,0,.04); }
+  .blankets .pinkb { position: absolute; left: -60px; top: 150px; width: 270px; height: 150px; border-radius: 90px 60px 40px 40px; background: radial-gradient(circle at 40% 30%, #ffd3df, #f7b2c6); }
+  .sleepy { position: absolute; left: 230px; top: 20px; width: 200px; height: 150px; }
+  .sleepy .h { position: absolute; left: 0; top: 30px; width: 170px; height: 130px; border-radius: 50%; background: radial-gradient(circle at 50% 40%, #cfcac6, #9c9897); }
+  .sleepy .h::before { content: ''; position: absolute; left: 55px; top: 12px; width: 60px; height: 34px; background: repeating-linear-gradient(90deg, #6f6c6d 0 6px, transparent 6px 14px); border-radius: 50%; opacity: .5; }
+  .sleepy .e { position: absolute; top: 72px; width: 30px; height: 10px; border-bottom: 5px solid #5a4a5e; border-radius: 0 0 20px 20px; }
+  .sleepy .e.l { left: 34px; } .sleepy .e.r { left: 104px; }
+  .sleepy .n { position: absolute; left: 76px; top: 96px; width: 18px; height: 13px; background: #f2a2a8; border-radius: 50% 50% 60% 60%; }
+  .sleepy .ear { position: absolute; top: 4px; width: 0; height: 0; border-left: 26px solid transparent; border-right: 26px solid transparent; border-bottom: 50px solid #8f8c8c; }
+  .sleepy .ear.l { left: 6px; transform: rotate(-18deg); } .sleepy .ear.r { left: 112px; transform: rotate(18deg); }
+  .zzz { position: absolute; left: 420px; top: 0px; font-size: 48px; font-weight: 800; color: var(--lav-d); transform: rotate(-10deg); }
+  .zzz span { display: inline-block; } .zzz span:nth-child(2) { font-size: 36px; transform: translateY(-30px); } .zzz span:nth-child(3) { font-size: 26px; transform: translateY(-60px); }
+  .logo { position: absolute; left: 50%; top: 90px; transform: translateX(-50%); text-align: center; }
+  .logo h1 { font-size: 110px; font-weight: 800; line-height: .9; color: #ff6f91; -webkit-text-stroke: 8px #fff; paint-order: stroke fill; text-shadow: 0 10px 0 rgba(90,74,94,.15); }
+  .logo p { font-size: 26px; font-weight: 700; margin-top: 10px; }
+  .menu { position: absolute; left: 50%; top: 330px; transform: translateX(-50%); display: flex; gap: 18px; }
+  .btn { padding: 14px 40px; border-radius: 30px; font-size: 26px; font-weight: 800; background: #ff6f91; color: #fff; box-shadow: 0 6px 0 #d9547a; }
+  .btn.alt { background: #fff; color: var(--ink); box-shadow: 0 6px 0 #e3d6db; }
+  .hint { position: absolute; left: 50%; bottom: 26px; transform: translateX(-50%); font-weight: 700; opacity: .6; font-size: 18px; }
+  .paw { position: absolute; font-size: 34px; opacity: .25; }
+</style>
+</head>
+<body>
+
+<!-- ================= GAMEPLAY HUD ================= -->
+<div class="screen" id="hud">
+  <div class="scene">
+    <div class="wall-stripe"></div><div class="baseboard"></div><div class="floor-lines"></div>
+    <div class="window"></div><div class="sunbeam"></div><div class="sunpatch"></div>
+    <div class="rug"></div>
+    <div class="table"></div><div class="mug"></div><div class="pen"></div>
+    <div class="plant"><div class="leaf" style="left:2px;transform:rotate(-25deg)"></div><div class="leaf" style="left:12px"></div><div class="leaf" style="left:22px;transform:rotate(25deg)"></div><div class="pot"></div></div>
+    <div class="blanket"></div>
+    <div class="mike-shadow"></div>
+    <div class="mike"><div class="tail"></div><div class="body"></div><div class="ear l"></div><div class="ear r"></div><div class="head"></div></div>
+  </div>
+
+  <!-- Status bars -->
+  <div class="stats card">
+    <div class="portrait"><div class="eye l"></div><div class="eye r"></div><div class="nose"></div><div class="mood">😼</div><div class="name">Mr. Mike</div></div>
+    <div class="bars">
+      <div class="bar hunger"><span class="ic">🥗</span><span class="nm">Hunger</span><div class="track"><div class="fill"></div></div></div>
+      <div class="bar thirst"><span class="ic">💧</span><span class="nm">Thirst</span><div class="track"><div class="fill"></div></div></div>
+      <div class="bar energy"><span class="ic">💤</span><span class="nm">Energy</span><div class="track"><div class="fill"></div></div></div>
+      <div class="bar chaos"><span class="ic">💥</span><span class="nm">Chaos</span><div class="track"><div class="fill"></div></div></div>
+    </div>
+  </div>
+
+  <!-- Sun / moon arc -->
+  <div class="clock card">
+    <svg width="300" height="110" viewBox="0 0 300 110">
+      <path d="M20 100 A130 90 0 0 1 280 100" fill="none" stroke="#f3e2d6" stroke-width="10" stroke-linecap="round"/>
+      <path d="M20 100 A130 90 0 0 1 112 22" fill="none" stroke="#ffd36b" stroke-width="10" stroke-linecap="round"/>
+      <circle cx="112" cy="22" r="16" fill="#ffcf4d" stroke="#fff" stroke-width="4"/>
+      <text x="270" y="78" font-size="20">🌙</text>
+      <text x="8" y="78" font-size="16">🌅</text>
+    </svg>
+    <div class="time">10:30 AM</div>
+    <div class="phase">Sunbathing hours ☀</div>
+  </div>
+
+  <!-- Score -->
+  <div class="score card">
+    <div class="t">Chaos Points</div>
+    <div class="v">1,250</div>
+    <div class="combo">x3 combo!</div>
+  </div>
+
+  <!-- Daily sticker book -->
+  <div class="stickers card">
+    <h3>Mr. Mike's Day</h3>
+    <ul>
+      <li class="done"><span>🥗</span>Salad</li>
+      <li class="done"><span>🛁</span>Bath water</li>
+      <li><span>☀️</span>Sunbathe</li>
+      <li><span>🪑</span>Steal chair</li>
+      <li class="done"><span>🐾</span>Biscuits</li>
+      <li><span>☕</span>Knock-offs 2/5</li>
+      <li><span>⚡</span>Zoomies</li>
+      <li><span>🧱</span>Wall-jump</li>
+    </ul>
+  </div>
+
+  <!-- World-space prompts -->
+  <div class="bubble interact"><span class="key">E</span>Knock it off!</div>
+  <div class="bubble interact2"><span class="key">E</span>Make biscuits</div>
+  <div class="pop">+50!</div>
+  <div class="pop small">Wall-jump +100</div>
+
+  <div class="owner-bubble">"MR. MIKE! That was my coffee!"<small>(Owner, from the office)</small></div>
+
+  <!-- Bottom -->
+  <div class="room card">🛋 Living Room <small>sunny spot nearby</small></div>
+  <div class="zoom card"><div class="t">⚡ Zoomies meter (hold Shift)</div><div class="track"><div class="fill"></div></div></div>
+  <div class="controls card">
+    <b>WASD</b><span>Move</span>
+    <b>Mouse</b><span>Look</span>
+    <b>Space</b><span>Jump</span>
+    <b>Shift</b><span>Zoomies</span>
+    <b>E</b><span>Interact</span>
+    <b>Esc</b><span>Pause</span>
+  </div>
+
+  <div class="label-tag" style="left:40px;top:14px">A · Status bars</div>
+  <div class="label-tag" style="left:735px;top:12px">B · Sun/moon clock</div>
+  <div class="label-tag" style="right:40px;top:14px">C · Score + combo (new)</div>
+  <div class="label-tag" style="right:40px;top:160px">D · Sticker book (new)</div>
+  <div class="label-tag" style="left:1015px;top:340px">E · Interact bubble</div>
+  <div class="label-tag" style="left:600px;top:235px">F · Owner speech (new)</div>
+  <div class="label-tag" style="left:40px;bottom:84px">G · Room name (new)</div>
+  <div class="label-tag" style="left:620px;bottom:100px">H · Zoomies meter (new)</div>
+  <div class="label-tag" style="right:40px;bottom:212px">I · Controls hint (new)</div>
+</div>
+
+<!-- ================= TITLE SCREEN ================= -->
+<div class="screen" id="title">
+  <div class="title-bg"></div>
+  <div class="paw" style="left:120px;top:160px">🐾</div><div class="paw" style="left:1380px;top:220px">🐾</div>
+  <div class="paw" style="left:220px;top:620px">🐾</div><div class="paw" style="left:1320px;top:680px">🐾</div>
+  <div class="logo"><h1>Mr. Mike's Life</h1><p>a cozy day of salad, sunbeams &amp; chaos</p></div>
+  <div class="menu"><div class="btn">▶ Wake up Mr. Mike</div><div class="btn alt">How to play</div></div>
+  <div class="blankets">
+    <div class="white"></div>
+    <div class="sleepy"><div class="ear l"></div><div class="ear r"></div><div class="h"></div><div class="e l"></div><div class="e r"></div><div class="n"></div></div>
+    <div class="pinkb"></div>
+    <div class="zzz"><span>Z</span><span>z</span><span>z</span></div>
+  </div>
+  <div class="hint">click anywhere to start</div>
+</div>
+
+<script>
+  const id = location.hash === '#title' ? 'title' : 'hud';
+  document.getElementById(id).classList.add('on');
+</script>
+</body>
+</html>
